@@ -59,6 +59,16 @@ router.get('/password/change',/*isAuthenticatedUser*/(req,res)=>{
     res.render('.users/changepassword');
 });
 
+router.get('/users/all',(req,res)=>{
+    User.find({})
+        .then(users =>{
+            res.render('./users/allusers',{users : users});
+        })
+        .catch(err =>{
+            console.log(err);
+        })
+});
+
 //Post routes
 router.post('/login',passport.authenticate('local',{
     successRedirect:'/dashboard',
@@ -78,10 +88,8 @@ router.post('/signup',(req,res)=>{
             req.flash('error_msg','ERR: '+err);
             res.redirect('/signup');
         }
-        passport.authenticate('local') (req,res,()=>{
-            req.flash('success_msg','Account Successfully Created!');
-            res.redirect('/login');
-        });
+        req.flash('success_msg','Account Successfully Created!');
+        res.redirect('/signup');
     });
 
 });
