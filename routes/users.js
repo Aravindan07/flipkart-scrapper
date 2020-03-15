@@ -33,11 +33,11 @@ router.get('/dashboard',isAuthenticatedUser,(req,res)=>{
 router.get('/logout',isAuthenticatedUser,(req,res)=>{
     req.logOut();
     req.flash('success_msg','You have logged out!!!');
-    res.redirect('./users/login');
+    res.redirect('/login');
 });
 
 router.get('/forgot',(req,res)=>{
-    res.render('.users/forgot');
+    res.render('.users/forgot'); 
 });
 
 router.get('/reset/:token',(req,res)=>{
@@ -55,11 +55,11 @@ router.get('/reset/:token',(req,res)=>{
         })
 });
 
-router.get('/password/change',/*isAuthenticatedUser*/(req,res)=>{
-    res.render('.users/changepassword');
+router.get('/password/change',isAuthenticatedUser,(req,res)=>{
+    res.render('./users/changepassword');
 });
 
-router.get('/users/all',(req,res)=>{
+router.get('/users/all',isAuthenticatedUser,(req,res)=>{
     User.find({})
         .then(users =>{
             res.render('./users/allusers',{users : users});
@@ -68,6 +68,17 @@ router.get('/users/all',(req,res)=>{
             console.log(err);
         })
 });
+router.get('/edit/:id',isAuthenticatedUser,(req,res)=>{
+    let searchQuery = {_id : req.params.id};
+    User.findOne(searchQuery)
+        .then(user =>{
+            res.render('./users/editusers',{user : user});
+        })
+        .catch(err =>{
+            req.flash('error_msg','ERROR: '+err);
+        })
+});
+
 
 //Post routes
 router.post('/login',passport.authenticate('local',{
@@ -76,7 +87,7 @@ router.post('/login',passport.authenticate('local',{
     failureFlash:'Invalid Username or Password.Please try again!!!'
 }));
 
-router.post('/signup',(req,res)=>{
+router.post('/signup',isAuthenticatedUser,(req,res)=>{
     let {name,email,password} = req.body;
 
     let userData={
@@ -95,7 +106,7 @@ router.post('/signup',(req,res)=>{
 });
 
 //route for changepassword
-router.post('/password/change',(req,res)=>{
+router.post('/password/change',isAuthenticatedUser,(req,res)=>{
     if(req.body.password!==req.body.confirmpassword){
         req.flash('error_msg',"Password doesn't match.Try again!");
         return res.redirect('/password/change');
@@ -106,7 +117,7 @@ router.post('/password/change',(req,res)=>{
                 user.save()
                     .then(user =>{
                         req.flash('success_msg','Password changed successfully!');
-                        res.redirect('./dashboard');
+                        res.redirect('/password/change');
                     })
                     .catch(err =>{
                         req.flash('error_msg','ERROR: '+err);
@@ -232,5 +243,40 @@ router.post('/reset/:token',(req,res,next)=>{
         res.redirect('/login');
     });
 });
+
+//PUT routes
+
+router.put('/edit/:id',(req,res)=>{
+    let searchQuery = {_id : req.params.id};
+    User.updateOne(searchQuery,{$set : {
+        name : req.body.name,
+        email : req.body.email
+    }})
+        .then(user =>{
+            req.flash('success_msg','Updated Successfully');
+            res.redirect('/users/all');
+        })
+        .catch(err =>{
+            req.flash('error_msg','ERROR: '+err);
+            res.redirect('/users/all');
+        })
+});
+
+//DELETE routes
+router.delete('/delete/user/:id',(req,res)=>{
+    let searchQuery = {_id : req.params.id}
+    
+    User.deleteOne(searchQuery)
+        .then(user=>{
+            req.flash('success_msg','Data Deleted Successfully');
+            res.redirect('/users/all');
+        })
+        .catch(err =>{
+            req.flash('error_msg','ERROR: '+err);
+            res.redirect('/users/all');
+        })
+});
+
+
 
 module.exports=router;
