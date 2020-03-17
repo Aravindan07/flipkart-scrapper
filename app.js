@@ -11,8 +11,9 @@ const methodOverride = require('method-override');
 const passport = require('passport');
 const localStrategy = require('passport-local').Strategy;
 
-//Requiring user route
+//Requiring user and admin routes
 const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 
 //Requiring user model
 const User = require('./models/usermodel');
@@ -60,6 +61,7 @@ app.use(express.static('public'));
 
 
 app.use(userRoutes);
+app.use(adminRoutes);
 
 app.listen(process.env.PORT, ()=> {
     console.log('Server started at Port 8080!');
