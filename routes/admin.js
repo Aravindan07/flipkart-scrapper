@@ -66,13 +66,14 @@ async function scrapData(url,page){
     }
 }
 
+//GET routes
 router.get('/product/new', isAuthenticatedUser, async (req, res)=> {
     try {
         let url = req.query.search;
         if(url) {
-            browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+            browser = await puppeteer.launch({headless : false});
             const page = await browser.newPage();
-            let result = await scrapData(url,page);
+            let result = await scrapeData(url,page);
 
             let productData = {
                 title : result.title,
@@ -82,22 +83,75 @@ router.get('/product/new', isAuthenticatedUser, async (req, res)=> {
             };
             res.render('./admin/newproduct', {productData : productData});
             browser.close();
+        } else {
+            let productData = {
+                title : "",
+                price : "",
+                stock : "",
+                productUrl : ""
+            };
+            res.render('./admin/newproduct', {productData : productData});
         }
-       else{
-           let productData = {
-            title : "",
-            price : "",
-            stock : "",
-            productUrl : ""
-           };
-           res.render('./admin/newproduct',{productData : productData});
-           browser.close();
-       }
-    } catch (error) {
-       req.flash('error_msg','ERROR: '+error);
-       res.redirect('/product/new');
+    } catch(error) {
+        req.flash('error_msg', 'ERROR: '+error);
+        res.redirect('/product/new');
+    }
+});
+router.get('/product/search', isAuthenticatedUser, (req,res)=> {
+    let userSku = req.query.sku;
+    if(userSku) {
+        Product.findOne({sku : userSku})
+            .then(product => {
+                if(!product) {
+                    req.flash('error_msg', 'Product does not exist in the database.');
+                    return res.redirect('/product/search');
+                }
+
+                res.render('./admin/search', {productData : product});
+            })
+            .catch(err => {
+                req.flash('error_msg', 'ERROR: '+err);
+                res.redirect('/product/new');
+            });
+    } else {
+        res.render('./admin/search', {productData : ''});
     }
 });
 
+
+//POST routes
+router.post('/product/new', isAuthenticatedUser, (req,res)=> {
+    let {title, price, stock, url, sku} = req.body;
+
+    let newProduct = {
+        title : title,
+        newprice : price,
+        oldprice : price,
+        newstock : stock,
+        oldstock : stock,
+        sku : sku,
+        company : "Flipkart",
+        url : url,
+        updateStatus : "Updated"
+    };
+
+    Product.findOne({sku : sku})
+        .then(product => {
+            if(product) {
+                req.flash('error_msg', 'Product already exist in the database.');
+                return res.redirect('/product/new');
+            }
+
+            Product.create(newProduct)
+                .then(product => {
+                    req.flash('success_msg', 'Product added successfully in the database.');
+                    res.redirect('/product/new');
+                })
+        })
+        .catch(err => {
+            req.flash('error_msg', 'ERROR: '+err);
+            res.redirect('/product/new');
+        });
+});
 
 module.exports = router;
