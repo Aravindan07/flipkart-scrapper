@@ -6,8 +6,6 @@ const cheerio = require('cheerio');
 //Requiring product datamodel
 const Product = require('../models/product');
 
-let browser;
-
 //checks for user authentication
 function isAuthenticatedUser(req,res,next){
     if(req.isAuthenticated()){
@@ -17,7 +15,9 @@ function isAuthenticatedUser(req,res,next){
     res.redirect('/login');
 }
 
-async  function scrapData(url,page){
+let browser;
+
+async function scrapData(url,page){
     try {
         await page.goto(url,{waitUntil : 'load' , timeout :0});
         const html = await page.evaluate(()=>document.body.innerHTML);
@@ -32,15 +32,11 @@ async  function scrapData(url,page){
             seller = checkSeller.text();
         }
         
-        let outOfStock = '';
-        let checkOutOfStock = $('div._1S11PY');
-        if(checkOutOfStock === null){
-            checkOutOfStock = $('div._1HmYoV._35HD7C.col-8-12 > div:nth-child(3) > div');
-            outOfStock = checkOutOfStock.text();
+        let outOfStock = $('div._1S11PY').text();
+        if(!outOfStock){
+            outOfStock = $('div._1HmYoV._35HD7C.col-8-12 > div:nth-child(3) > div').text();    
         }
-        else{
-            outOfStock = checkOutOfStock.text();
-        }
+        
 
         let deliveryNotAvailable = '';
         let checkDeliveryNotAvailable = $('div._2h4rON > ul > div > div');
@@ -50,7 +46,7 @@ async  function scrapData(url,page){
 
         let stock = '';
 
-        if((outOfStock.includes('Coming Soon')) || (deliveryNotAvailable.includes('Delivery not available'))){
+        if((outOfStock.includes('Out of Stock'||'Coming Soon'||'Hurry, Only few left!')) || (deliveryNotAvailable.includes('Delivery not available'))){
             stock = 'Out Of Stock';
         }
         else {
@@ -70,23 +66,23 @@ async  function scrapData(url,page){
     }
 }
 
-router.get('/product/new',isAuthenticatedUser,async (req,res)=>{
+router.get('/product/new', isAuthenticatedUser, async (req, res)=> {
     try {
-       let url = req.query.search;
-       if(url){
-           browser = await puppeteer.launch({headless : false});
-           const page = await browser.newPage();
-           const result = await scrapData(url,page);
+        let url = req.query.search;
+        if(url) {
+            browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+            const page = await browser.newPage();
+            let result = await scrapData(url,page);
 
-           let productData = {
-               title : result.title,
-               price : result.price,
-               stock : result.stock,
-               productUrl : result.url 
-           };
-           res.render('./admin/newproduct',{productData : productData});
-           browser.close();
-       } 
+            let productData = {
+                title : result.title,
+                price : result.price,
+                stock : result.stock,
+                productUrl : result.url
+            };
+            res.render('./admin/newproduct', {productData : productData});
+            browser.close();
+        }
        else{
            let productData = {
             title : "",
@@ -99,7 +95,7 @@ router.get('/product/new',isAuthenticatedUser,async (req,res)=>{
        }
     } catch (error) {
        req.flash('error_msg','ERROR: '+error);
-       return res.redirect('/product/new');
+       res.redirect('/product/new');
     }
 });
 
